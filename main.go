@@ -17,12 +17,12 @@ var (
 )
 
 type BoConfig struct {
-	TokenFile   string      `json:"tokenFile"`
-	UserFile    string      `json:"userFile"`
-	GroupID     int64       `json:"groupID"`
-	Zero        zero.Config `json:"zero"`
-	Ws          string      `json:"ws"`
-	AccessToken string      `json:"accessToken"`
+	TokenFile string             `json:"tokenFile"`
+	UserFile  string             `json:"userFile"`
+	GroupID   int64              `json:"groupID"`
+	Zero      zero.Config        `json:"zero"`
+	WC        []*driver.WSClient `json:"wc"`
+	WS        []*driver.WSServer `json:"ws"`
 }
 
 func LoadConfig(path string) (*BoConfig, error) {
@@ -36,7 +36,20 @@ func LoadConfig(path string) (*BoConfig, error) {
 	defer configFile.Close()
 	config := &BoConfig{}
 	err = json.NewDecoder(configFile).Decode(&config)
-	config.Zero.Driver = []zero.Driver{driver.NewWebSocketClient(config.Ws, config.AccessToken)}
+	config.Zero.Driver = make([]zero.Driver, 0)
+	for _, w := range config.WC {
+		if w.Url != "" {
+			config.Zero.Driver = append(config.Zero.Driver, w)
+		}
+	}
+	for _, s := range config.WS {
+		if s.Url != "" {
+			config.Zero.Driver = append(config.Zero.Driver, driver.NewWebSocketServer(16, s.Url, s.AccessToken))
+		}
+	}
+	if len(config.Zero.Driver) == 0 {
+		return nil, errors.New("websocket config is not found")
+	}
 	return config, err
 }
 func NewConfigFile(path string) error {
@@ -53,6 +66,8 @@ func NewConfigFile(path string) error {
 			SuperUsers:    []int64{},
 			CommandPrefix: "/mai ",
 		},
+		WC: []*driver.WSClient{{}},
+		WS: []*driver.WSServer{{}},
 	}
 	return json.NewEncoder(configFile).Encode(config)
 }
