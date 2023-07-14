@@ -21,11 +21,11 @@ type MaiUser struct {
 }
 
 var (
-	bindUsage = "/mai bindmai 好友代码 [f]\n" +
+	bindUsage = "bindmai 好友代码 [f]\n" +
 		" - 绑定你的maimai账号，f选项用于重新绑定"
-	bindProberUsage = "/mai bindprober 查分器账号 查分器密码 [f]\n" +
+	bindProberUsage = "bindprober 查分器账号 查分器密码 [f]\n" +
 		" - 绑定你的查分器账号，f选项用于重新绑定"
-	updateUsage = "/mai update [查分器账号] [查分器密码]\n" +
+	updateUsage = "update [查分器账号] [查分器密码]\n" +
 		" - 如已绑定查分器账户，无需提供账号密码"
 
 	userMap = make(map[int64]MaiUser)
@@ -64,10 +64,18 @@ func RestrictRule(ctx *zero.Ctx) bool {
 func StartQBot() error {
 	zero.Run(&config.Zero)
 
+	prefix := config.Zero.CommandPrefix
+	if prefix == "" {
+		return errors.New("qbot: prefix must be set")
+	}
+	bindUsage = prefix + bindUsage
+	bindProberUsage = prefix + bindProberUsage
+	updateUsage = prefix + updateUsage
+
 	zero.OnCommand("bindmai", RestrictRule).Handle(onBindMai)
 	zero.OnCommand("bindprober", RestrictRule).Handle(onBindProber)
 	zero.OnCommand("update", RestrictRule).Handle(onUpdateRecords)
-	zero.OnFullMatch("/mai", RestrictRule).Handle(onMai)
+	zero.OnFullMatch(strings.TrimSpace(prefix), RestrictRule).Handle(onMai)
 
 	var err error
 	userMap, err = LoadUserMap(config.UserFile)

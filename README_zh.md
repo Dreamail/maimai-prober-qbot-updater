@@ -25,6 +25,8 @@ README还在写，可能不够完善，如遇到问题欢迎提交issue或来个
 | ws | Go-CQHTTP的WebSocket地址 |
 | accessToken | Go-CQHTTP AccessToken |
 
+Note: 如果ZereBot CommandPrefix后不带空格，如`/`，命令将会为`/bindmai`等；如带空格，如默认配置`/mai `，命令将会为`/mai bindmai`等
+
 4. 再次运行二进制，首次登陆或maimai token失效会向管理员账号发送微信登陆二维码，请登陆maimai bot微信账号，或提前抓包手动修改tokenFile
 5. 不出意外就部署完成啦
 
