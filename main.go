@@ -46,9 +46,12 @@ func NewConfigFile(path string) error {
 	}
 	defer configFile.Close()
 	config := &BoConfig{
+		TokenFile: "maitoken.json",
+		UserFile:  "usermap.json",
 		Zero: zero.Config{
-			NickName:   []string{},
-			SuperUsers: []int64{},
+			NickName:      []string{},
+			SuperUsers:    []int64{},
+			CommandPrefix: "/mai ",
 		},
 	}
 	return json.NewEncoder(configFile).Encode(config)
