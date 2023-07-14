@@ -54,11 +54,14 @@ func LoadUserMap(path string) (map[int64]MaiUser, error) {
 }
 
 func RestrictRule(ctx *zero.Ctx) bool {
+	if config.GroupID == 0 {
+		return true
+	}
 	if ctx.Event.GroupID == 0 {
 		result := ctx.GetGroupMemberInfo(config.GroupID, ctx.Event.UserID, false)
 		return result.String() != ""
 	}
-	return true
+	return ctx.Event.GroupID == config.GroupID
 }
 
 func StartQBot() error {
