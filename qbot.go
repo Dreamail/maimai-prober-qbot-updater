@@ -271,20 +271,25 @@ func onUpdateRecords(ctx *zero.Ctx) {
 	status, _ := bot.UpdateScore(maiUser.FriendID, username, passwd, true)
 
 	SendWithAt(ctx, message.Text("开始更新成绩～"))
-	errStr := ""
+
+	errDiff := []string{}
 	for i := 0; i < 5; i++ {
 		stat := <-status
-		if strings.Contains(stat, "err: ") {
-			errStr = stat
-			break
+		if stat.Err != nil {
+			errDiff = append(errDiff, diffStr[stat.Diff])
+			if ctx.Event.GroupID == 0 {
+				ctx.Send(message.Text(fmt.Sprintf("%s难度更新失败", diffStr[stat.Diff])))
+			}
+			SendToSuper(message.Text(fmt.Sprintf("on update: diff: %s, err: %s", diffStr[stat.Diff], stat.Err.Error())))
+			continue
 		}
 		if ctx.Event.GroupID == 0 {
-			SendWithAt(ctx, message.Text(stat))
+			ctx.Send(message.Text(fmt.Sprintf("%s难度更新成功", diffStr[stat.Diff])))
 		}
 	}
-	if errStr != "" {
-		SendWithAt(ctx, message.Text("更新时出现问题，请稍后再试或联系管理员"))
-		SendToSuper(message.Text("on update: " + errStr))
+
+	if len(errDiff) != 0 {
+		SendWithAt(ctx, message.Text(fmt.Sprintf("更新%s难度时出现问题，请稍后再试或联系管理员", strings.Join(errDiff, ", "))))
 		return
 	}
 	SendWithAt(ctx, message.Text("所有成绩更新完成！"))

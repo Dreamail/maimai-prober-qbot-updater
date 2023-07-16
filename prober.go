@@ -12,8 +12,13 @@ import (
 	"sync"
 )
 
-func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan string, error) {
-	status := make(chan string, 5)
+type Status struct {
+	Diff int
+	Err  error
+}
+
+func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan Status, []Status) {
+	status := make(chan Status, 5)
 	var wg sync.WaitGroup
 	wg.Add(5)
 	for i := 0; i < 5; i++ {
@@ -21,10 +26,16 @@ func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan string, er
 		go func() {
 			err := b.updateScore(idx, user, passwd, i)
 			if err != nil {
-				status <- fmt.Sprintf("diff: %d err: %s", i, err.Error())
+				status <- Status{
+					Diff: i,
+					Err:  err,
+				}
 				return
 			}
-			status <- fmt.Sprintf("diff: %d success", i)
+			status <- Status{
+				Diff: i,
+				Err:  nil,
+			}
 			wg.Done()
 		}()
 	}
@@ -36,16 +47,16 @@ func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan string, er
 		return status, nil
 	}
 
-	errStr := ""
+	errStats := []Status{}
 	for i := 0; i < 5; i++ {
 		stat := <-status
-		if strings.Contains(stat, "err: ") {
-			errStr = errStr + stat + "\n"
+		if stat.Err != nil {
+			errStats = append(errStats, stat)
 		}
 	}
 	close(status)
-	if errStr != "" {
-		return nil, errors.New(errStr)
+	if len(errStats) != 0 {
+		return nil, errStats
 	}
 	return nil, nil
 }
