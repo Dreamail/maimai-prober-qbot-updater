@@ -106,8 +106,12 @@ func SendToSuper(msg ...interface{}) {
 	})
 }
 func SendWithAt(ctx *zero.Ctx, msg ...message.MessageSegment) {
-	chain := append([]message.MessageSegment{message.At(ctx.Event.UserID)}, msg...)
-	ctx.SendChain(chain...)
+	if ctx.Event.GroupID != 0 {
+		chain := append([]message.MessageSegment{message.At(ctx.Event.UserID)}, msg...)
+		ctx.SendChain(chain...)
+	} else {
+		ctx.SendChain(msg...)
+	}
 }
 
 func onBindMai(ctx *zero.Ctx) {
