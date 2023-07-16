@@ -19,7 +19,7 @@ var (
 type BoConfig struct {
 	TokenFile string             `json:"tokenFile"`
 	UserFile  string             `json:"userFile"`
-	GroupID   int64              `json:"groupID"`
+	GroupID   []int64            `json:"groupID"`
 	Zero      zero.Config        `json:"zero"`
 	WC        []*driver.WSClient `json:"wc"`
 	WS        []*driver.WSServer `json:"ws"`
@@ -61,6 +61,7 @@ func NewConfigFile(path string) error {
 	config := &BoConfig{
 		TokenFile: "maitoken.json",
 		UserFile:  "usermap.json",
+		GroupID:   []int64{},
 		Zero: zero.Config{
 			NickName:      []string{},
 			SuperUsers:    []int64{},
