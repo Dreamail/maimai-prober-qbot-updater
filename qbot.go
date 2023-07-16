@@ -105,11 +105,15 @@ func SendToSuper(msg ...interface{}) {
 		return true
 	})
 }
+func SendWithAt(ctx *zero.Ctx, msg ...message.MessageSegment) {
+	chain := append([]message.MessageSegment{message.At(ctx.Event.UserID)}, msg...)
+	ctx.SendChain(chain...)
+}
 
 func onBindMai(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
 	if len(args) != 1 && len(args) != 2 {
-		ctx.Send(message.Text(
+		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			bindUsage,
 		))
@@ -117,17 +121,17 @@ func onBindMai(ctx *zero.Ctx) {
 	}
 	maiUser, ok := userMap[ctx.Event.UserID]
 	if ok && userMap[ctx.Event.UserID].FriendID != "" && (len(args) != 2 || args[1] != "f") {
-		ctx.Send(message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
+		SendWithAt(ctx, message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
 		return
 	}
 
 	err := bot.ValidateFriendCode(args[0])
 	if err != nil {
 		if err.Error() == "player was not found" {
-			ctx.Send(message.Text(zero.BotConfig.NickName[0] + "找不到你哟"))
+			SendWithAt(ctx, message.Text(zero.BotConfig.NickName[0]+"找不到你哟"))
 		} else {
 			SendToSuper(message.Text("on bind: " + err.Error()))
-			ctx.Send(message.Text(zero.BotConfig.NickName[0] + "找你找出错啦，请稍后再试或联系管理员"))
+			SendWithAt(ctx, message.Text(zero.BotConfig.NickName[0]+"找你找出错啦，请稍后再试或联系管理员"))
 		}
 		return
 	}
@@ -135,33 +139,33 @@ func onBindMai(ctx *zero.Ctx) {
 	var friendList, sentList []string // for goto
 	friendList, err = bot.GetFriendList()
 	if err != nil {
-		ctx.Send(message.Text("添加好友失败了，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("添加好友失败了，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on bind: " + err.Error()))
 		return
 	}
 	if slices.Contains(friendList, args[0]) {
-		ctx.Send(message.Text("你已经是好友了，所以绑定成功啦！"))
+		SendWithAt(ctx, message.Text("你已经是好友了，所以绑定成功啦！"))
 		goto ret
 	}
 
 	sentList, err = bot.GetSentFriendRequest()
 	if err != nil {
-		ctx.Send(message.Text("添加好友失败了，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("添加好友失败了，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on bind: " + err.Error()))
 		return
 	}
 	if slices.Contains(sentList, args[0]) {
-		ctx.Send(message.Text("已经给你发过好友请求了啦，同意好友申请就完成绑定啦！"))
+		SendWithAt(ctx, message.Text("已经给你发过好友请求了啦，同意好友申请就完成绑定啦！"))
 		goto ret
 	}
 
 	err = bot.SendFriendRequest(args[0])
 	if err != nil {
-		ctx.Send(message.Text("发送好友请求失败，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("发送好友请求失败，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on bind: " + err.Error()))
 		return
 	}
-	ctx.Send(message.Text(zero.BotConfig.NickName[0] + "给你发送好友请求啦，同意好友申请就完成绑定啦！"))
+	SendWithAt(ctx, message.Text(zero.BotConfig.NickName[0]+"给你发送好友请求啦，同意好友申请就完成绑定啦！"))
 
 ret:
 	maiUser.FriendID = args[0]
@@ -177,7 +181,7 @@ ret:
 func onBindProber(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
 	if len(args) != 2 && len(args) != 3 {
-		ctx.Send(message.Text(
+		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			bindProberUsage,
 		))
@@ -185,7 +189,7 @@ func onBindProber(ctx *zero.Ctx) {
 	}
 	maiUser, ok := userMap[ctx.Event.UserID]
 	if ok && userMap[ctx.Event.UserID].Username != "" && (len(args) != 3 || args[2] != "f") {
-		ctx.Send(message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
+		SendWithAt(ctx, message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
 		return
 	}
 
@@ -195,16 +199,16 @@ func onBindProber(ctx *zero.Ctx) {
 		strings.NewReader(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, args[0], args[1])),
 	)
 	if err != nil {
-		ctx.Send(message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on bind: " + err.Error()))
 		return
 	}
 	if loginResp.StatusCode == 401 {
-		ctx.Send(message.Text("查分器账号密码有误，请检查一下哦"))
+		SendWithAt(ctx, message.Text("查分器账号密码有误，请检查一下哦"))
 		return
 	}
 	if loginResp.StatusCode != 200 {
-		ctx.Send(message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
 		body, err := io.ReadAll(loginResp.Body)
 		loginResp.Body.Close()
 		if err != nil {
@@ -214,7 +218,7 @@ func onBindProber(ctx *zero.Ctx) {
 		SendToSuper(message.Text("on bind: " + string(strings.TrimSpace(string(body)))))
 		return
 	}
-	ctx.Send(message.Text("绑定查分器账号成功！"))
+	SendWithAt(ctx, message.Text("绑定查分器账号成功！"))
 
 	maiUser.Username = args[0]
 	maiUser.Passwd = args[1]
@@ -230,7 +234,7 @@ func onBindProber(ctx *zero.Ctx) {
 func onUpdateRecords(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
 	if len(args) != 0 && len(args) != 2 {
-		ctx.Send(message.Text(
+		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			updateUsage,
 		))
@@ -239,7 +243,7 @@ func onUpdateRecords(ctx *zero.Ctx) {
 
 	maiUser := userMap[ctx.Event.UserID]
 	if maiUser.FriendID == "" {
-		ctx.Send(message.Text("你还未绑定maimai账户，先进行一个账户绑定吧！"))
+		SendWithAt(ctx, message.Text("你还未绑定maimai账户，先进行一个账户绑定吧！"))
 		return
 	}
 
@@ -253,20 +257,20 @@ func onUpdateRecords(ctx *zero.Ctx) {
 		passwd = maiUser.Passwd
 	}
 	if username == "" {
-		ctx.Send(message.Text("你还未绑定查分器账户，请提供查分器帐密或者先进行一个账户绑定吧！"))
+		SendWithAt(ctx, message.Text("你还未绑定查分器账户，请提供查分器帐密或者先进行一个账户绑定吧！"))
 		return
 	}
 
 	err := bot.FavoriteOnFriend(maiUser.FriendID)
 	if err != nil {
-		ctx.Send(message.Text("把你登陆到喜爱失败惹，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("把你登陆到喜爱失败惹，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on update: " + err.Error()))
 		return
 	}
 
 	status, _ := bot.UpdateScore(maiUser.FriendID, username, passwd, true)
 
-	ctx.Send(message.Text("开始更新成绩～"))
+	SendWithAt(ctx, message.Text("开始更新成绩～"))
 	errStr := ""
 	for i := 0; i < 5; i++ {
 		stat := <-status
@@ -275,15 +279,15 @@ func onUpdateRecords(ctx *zero.Ctx) {
 			break
 		}
 		if ctx.Event.GroupID == 0 {
-			ctx.Send(message.Text(stat))
+			SendWithAt(ctx, message.Text(stat))
 		}
 	}
 	if errStr != "" {
-		ctx.Send(message.Text("更新时出现问题，请稍后再试或联系管理员"))
+		SendWithAt(ctx, message.Text("更新时出现问题，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on update: " + errStr))
 		return
 	}
-	ctx.Send(message.Text("所有成绩更新完成！"))
+	SendWithAt(ctx, message.Text("所有成绩更新完成！"))
 
 	err = bot.FavoriteOffFriend(maiUser.FriendID)
 	if err != nil {
@@ -292,7 +296,7 @@ func onUpdateRecords(ctx *zero.Ctx) {
 	}
 }
 func onMai(ctx *zero.Ctx) {
-	ctx.Send(message.Text(
+	SendWithAt(ctx, message.Text(
 		"用法：（方括号内为可选参数）",
 		"\n",
 		bindUsage,
