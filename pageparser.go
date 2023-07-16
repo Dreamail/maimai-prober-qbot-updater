@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -82,11 +83,33 @@ func ParseRecords(achievementsvs, dxscorevs string, diff int) ([]Record, error) 
 
 			iconEles := htmlquery.Find(e, `//table[@class="f_14 t_c"]/tbody/tr/td/img[@class="h_30 f_r"]`)
 			for _, ie := range iconEles {
-				if strings.Contains(htmlquery.SelectAttr(ie, "src"), "fs") {
-					recordMap[title+kind].FS = "fs"
+				icon := regexp.MustCompile(`music_icon_(.*?).png`).FindStringSubmatch(htmlquery.SelectAttr(ie, "src"))
+				if strings.Contains(icon[1], "fc") || strings.Contains(icon[1], "ap") {
+					switch icon[1] {
+					case "fc":
+						recordMap[title+kind].FC = "fc"
+					case "fcp":
+						recordMap[title+kind].FC = "fcp"
+					case "ap":
+						recordMap[title+kind].FC = "ap"
+					case "app":
+						recordMap[title+kind].FC = "app"
+					}
 				}
-				if strings.Contains(htmlquery.SelectAttr(ie, "src"), "fc") {
-					recordMap[title+kind].FC = "fc"
+				if strings.Contains(icon[1], "fs") {
+					switch icon[1] {
+					case "fs":
+						recordMap[title+kind].FS = "fs"
+					case "fsp":
+						recordMap[title+kind].FS = "fsp"
+					case "fsd":
+						recordMap[title+kind].FS = "fsd"
+					case "fsdp":
+						recordMap[title+kind].FS = "fsdp"
+					}
+				}
+				if recordMap[title+kind].FC != "" && recordMap[title+kind].FS != "" {
+					break
 				}
 			}
 
