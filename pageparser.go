@@ -54,7 +54,7 @@ func ParseRecords(achievementsvs, dxscorevs string, diff int) ([]Record, error) 
 			scoreString := htmlquery.InnerText(htmlquery.Find(e, fmt.Sprintf(`//table[@class="f_14 t_c"]/tbody/tr/td[@class="p_r %s_score_label w_120 f_b"]`, diffStr[diff]))[1])
 			if record, ok := recordMap[title+kind]; ok {
 				if strings.Contains(scoreString, "%") {
-					achievements, err := strconv.ParseFloat(strings.TrimSpace(strings.Replace(scoreString, "%", "", -1)), 32)
+					achievements, err := strconv.ParseFloat(strings.TrimSpace(strings.ReplaceAll(scoreString, "%", "")), 64)
 					if err != nil {
 						return err
 					}
@@ -72,7 +72,7 @@ func ParseRecords(achievementsvs, dxscorevs string, diff int) ([]Record, error) 
 				Title: title,
 			}
 			if strings.Contains(scoreString, "%") {
-				achievements, err := strconv.ParseFloat(strings.TrimSpace(strings.Replace(scoreString, "%", "", -1)), 32)
+				achievements, err := strconv.ParseFloat(strings.TrimSpace(strings.ReplaceAll(scoreString, "%", "")), 64)
 				if err != nil {
 					return err
 				}
