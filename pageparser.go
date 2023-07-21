@@ -36,8 +36,14 @@ func ParseRecords(achievementsvs, dxscorevs string, diff int) ([]Record, error) 
 			return errors.New("record was not found")
 		}
 
+		link_searched := false // fuck duplicated name
 		for _, e := range elements {
 			title := htmlquery.InnerText(htmlquery.FindOne(e, `//div[@class="music_name_block t_l f_13 break"]`))
+
+			if title == "Link" && !link_searched { // the frist Link shoud be niconico & VOCALOID grene
+				title = "Link(CoF)"
+				link_searched = true
+			}
 
 			kindIconSrc := htmlquery.SelectAttr(htmlquery.FindOne(e, `//img[@class="music_kind_icon f_r"]`), "src")
 			kind := "DX"
