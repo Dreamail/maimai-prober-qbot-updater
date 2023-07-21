@@ -20,7 +20,7 @@ README还在写，可能不够完善，如遇到问题欢迎提交issue或来个
 | ---- | ----------- |
 | tokenFile | maimai登陆token文件储存路径 |
 | userFile | 用户绑定储存路径 |
-| groupID | 限制可以使用的群组，为0则不限制 |
+| groupID | 限制可以使用的群组（数组类型），为null则不限制 |
 | zero | ZeroBot配置，详见其文档 |
 | ws | Go-CQHTTP的WebSocket地址 |
 | accessToken | Go-CQHTTP AccessToken |
