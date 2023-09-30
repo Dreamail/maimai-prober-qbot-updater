@@ -16,17 +16,17 @@ import (
 )
 
 type MaiUser struct {
-	FriendID, Username, Passwd string
+	FriendID, UserToken, Passwd string
 	Updating                   bool `json:"-"`
 }
 
 var (
 	bindUsage = "bindmai 好友代码 [f]\n" +
 		" - 绑定你的maimai账号，f选项用于重新绑定"
-	bindProberUsage = "bindprober 查分器账号 查分器密码 [f]\n" +
+	bindProberUsage = "bindprober token [f]\n" +
 		" - 绑定你的查分器账号，f选项用于重新绑定"
-	updateUsage = "update [查分器账号] [查分器密码]\n" +
-		" - 如已绑定查分器账户，无需提供账号密码"
+	updateUsage = "update [token]\n" +
+		" - 如已绑定查分器账户，无需提供token"
 
 	userMap = make(map[int64]MaiUser)
 )
@@ -116,7 +116,7 @@ func SendWithAt(ctx *zero.Ctx, msg ...message.MessageSegment) {
 
 func onBindMai(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
-	if len(args) != 1 && len(args) != 2 {
+	if len(args) != 1 {
 		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			bindUsage,
@@ -124,7 +124,7 @@ func onBindMai(ctx *zero.Ctx) {
 		return
 	}
 	maiUser, ok := userMap[ctx.Event.UserID]
-	if ok && userMap[ctx.Event.UserID].FriendID != "" && (len(args) != 2 || args[1] != "f") {
+	if ok && userMap[ctx.Event.UserID].FriendID != "" && (len(args) != 1 || args[1] != "f") {
 		SendWithAt(ctx, message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
 		return
 	}
@@ -184,7 +184,7 @@ ret:
 }
 func onBindProber(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
-	if len(args) != 2 && len(args) != 3 {
+	if len(args) != 1 && len(args) != 2 {
 		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			bindProberUsage,
@@ -192,23 +192,22 @@ func onBindProber(ctx *zero.Ctx) {
 		return
 	}
 	maiUser, ok := userMap[ctx.Event.UserID]
-	if ok && userMap[ctx.Event.UserID].Username != "" && (len(args) != 3 || args[2] != "f") {
+	if ok && userMap[ctx.Event.UserID].UserToken != "" && (len(args) != 2 || args[2] != "f") {
 		SendWithAt(ctx, message.Text("你已经绑定了啦，需要重新绑定请添加f选项"))
 		return
 	}
 
-	loginResp, err := http.Post(
-		"https://www.diving-fish.com/api/maimaidxprober/login",
-		"application/json",
-		strings.NewReader(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, args[0], args[1])),
-	)
+	req, err := http.NewRequest("GET", "https://www.diving-fish.com/api/maimaidxprober/player/records", http.NoBody)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Import-Token", args[0])
+	loginResp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		SendWithAt(ctx, message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
 		SendToSuper(message.Text("on bind: " + err.Error()))
 		return
 	}
-	if loginResp.StatusCode == 401 {
-		SendWithAt(ctx, message.Text("查分器账号密码有误，请检查一下哦"))
+	if loginResp.StatusCode == 400 {
+		SendWithAt(ctx, message.Text("查分器token有误，请检查一下哦"))
 		return
 	}
 	if loginResp.StatusCode != 200 {
@@ -224,8 +223,7 @@ func onBindProber(ctx *zero.Ctx) {
 	}
 	SendWithAt(ctx, message.Text("绑定查分器账号成功！"))
 
-	maiUser.Username = args[0]
-	maiUser.Passwd = args[1]
+	maiUser.UserToken = args[0]
 
 	userMap[ctx.Event.UserID] = maiUser
 
@@ -237,7 +235,7 @@ func onBindProber(ctx *zero.Ctx) {
 }
 func onUpdateRecords(ctx *zero.Ctx) {
 	args := shell.Parse(ctx.State["args"].(string))
-	if len(args) != 0 && len(args) != 2 {
+	if len(args) != 0 && len(args) != 1 {
 		SendWithAt(ctx, message.Text(
 			"参数错误，用法：（方括号内为可选参数）\n",
 			updateUsage,
@@ -251,28 +249,50 @@ func onUpdateRecords(ctx *zero.Ctx) {
 		return
 	}
 
-	username := ""
-	passwd := ""
-	if len(args) == 2 {
-		username = args[0]
-		passwd = args[1]
+	UserToken := ""
+	if len(args) == 1 {
+		UserToken = args[0]
 	} else {
-		username = maiUser.Username
-		passwd = maiUser.Passwd
+		UserToken = maiUser.UserToken
 	}
-	if username == "" {
+	if UserToken == "" {
 		SendWithAt(ctx, message.Text("你还未绑定查分器账户，请提供查分器帐密或者先进行一个账户绑定吧！"))
 		return
 	}
 
-	err := bot.FavoriteOnFriend(maiUser.FriendID)
+	tokentest, err := http.NewRequest("GET", "https://www.diving-fish.com/api/maimaidxprober/player/records", http.NoBody)
+	tokentest.Header.Set("Content-Type", "application/json")
+	tokentest.Header.Set("Import-Token", UserToken)
+	tokenResp, err := http.DefaultClient.Do(tokentest)
 	if err != nil {
-		SendWithAt(ctx, message.Text("把你登陆到喜爱失败惹，请稍后再试或联系管理员"))
-		SendToSuper(message.Text("on update: " + err.Error()))
+		SendWithAt(ctx, message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
+		SendToSuper(message.Text("on bind: " + err.Error()))
+		return
+	}
+	if tokenResp.StatusCode == 400 {
+		SendWithAt(ctx, message.Text("查分器token已过期，请使用 \"" + config.Zero.CommandPrefix + " token f\" 更新token哦"))
+		return
+	}
+	if tokenResp.StatusCode != 200 {
+		SendWithAt(ctx, message.Text("登陆查分器出错啦，请稍后再试或联系管理员"))
+		body, err := io.ReadAll(tokenResp.Body)
+		tokenResp.Body.Close()
+		if err != nil {
+			SendToSuper(message.Text("on bind: " + err.Error()))
+			return
+		}
+		SendToSuper(message.Text("on bind: " + string(strings.TrimSpace(string(body)))))
 		return
 	}
 
-	status, _ := bot.UpdateScore(maiUser.FriendID, username, passwd, true)
+	errf := bot.FavoriteOnFriend(maiUser.FriendID)
+	if errf != nil {
+		SendWithAt(ctx, message.Text("把你登陆到喜爱失败惹，请稍后再试或联系管理员"))
+		SendToSuper(message.Text("on update: " + errf.Error()))
+		return
+	}
+
+	status, _ := bot.UpdateScore(maiUser.FriendID, UserToken, true)
 
 	SendWithAt(ctx, message.Text("开始更新成绩～"))
 

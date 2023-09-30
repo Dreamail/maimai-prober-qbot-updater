@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -17,14 +16,14 @@ type Status struct {
 	Err  error
 }
 
-func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan Status, []Status) {
+func (b *Bot) UpdateScore(idx, user string, async bool) (chan Status, []Status) {
 	status := make(chan Status, 5)
 	var wg sync.WaitGroup
 	wg.Add(5)
 	for i := 0; i < 5; i++ {
 		i := i
 		go func() {
-			err := b.updateScore(idx, user, passwd, i)
+			err := b.updateScore(idx, user, i)
 			if err != nil {
 				status <- Status{
 					Diff: i,
@@ -60,7 +59,7 @@ func (b *Bot) UpdateScore(idx, user, passwd string, async bool) (chan Status, []
 	}
 	return nil, nil
 }
-func (b *Bot) updateScore(idx, user, passwd string, diff int) error {
+func (b *Bot) updateScore(idx, user string, diff int) error {
 	result := []string{"", ""}
 	var err error
 	errCh := make(chan error, 2)
@@ -103,27 +102,16 @@ func (b *Bot) updateScore(idx, user, passwd string, diff int) error {
 	client := &http.Client{
 		Jar: jar,
 	}
-	loginResp, err := client.Post(
-		"https://www.diving-fish.com/api/maimaidxprober/login",
-		"application/json",
-		strings.NewReader(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, user, passwd)),
-	)
-	if err != nil {
-		return err
-	}
-	if loginResp.StatusCode != 200 {
-		return errors.New("login failed: " + loginResp.Status)
-	}
-
 	body, err := json.Marshal(records)
-	client.Post(
-		"https://www.diving-fish.com/api/maimaidxprober/player/update_records",
-		"application/json",
-		bytes.NewReader(body),
-	)
+	req, err := http.NewRequest("POST", "https://www.diving-fish.com/api/maimaidxprober/player/update_records", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Import-Token", user)
+	resp, err := client.Do(req)
+
+	defer resp.Body.Close()
 
 	return nil
 }
