@@ -1,3 +1,9 @@
+# Notice
+
+Due to the fact that I have turned to nonebot2 framework, this repo was rewrited in python (not fully), check out the new repo:
+
+## https://github.com/Dreamail/maimai-updater
+
 # maimai-prober-qbot-updater
 [README_ZH](https://github.com/Dreamail/maimai-prober-qbot-updater/blob/main/README_zh.md)
 
